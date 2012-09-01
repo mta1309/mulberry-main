@@ -51,20 +51,28 @@ OSErr CAppLaunch::LaunchApplicationWithDocument(OSType appCreator, const PPx::FS
 	// Code taken from TechNote #2017 on Launch Services
 	
 	// Find the application on disk
-	FSRef outAppRef;
-	OSErr err = ::LSGetApplicationForInfo(kLSUnknownType, appCreator, NULL, kLSRolesAll, &outAppRef, NULL);
+	CFURLRef outAppURL;
+    const CFURLRef itemURL[1] = {CFURLCreateFromFSRef(NULL, &doc->UseRef())};
+    CFArrayRef itemURLs;
+	OSErr err;
 	
 	// Try to launch it with the document
 
-	LSLaunchFSRefSpec inLaunchSpec;
-	inLaunchSpec.appRef = (err == noErr) ? &outAppRef : NULL;
-	inLaunchSpec.numDocs = 1;
-	inLaunchSpec.itemRefs = &doc->UseRef();
-	inLaunchSpec.passThruParams = NULL;
-	inLaunchSpec.launchFlags = kLSLaunchDefaults;
-	inLaunchSpec.asyncRefCon = NULL;
-
-	err = ::LSOpenFromRefSpec(&inLaunchSpec, NULL);
-
+    LSLaunchURLSpec inLaunchSpec;
+    err = ::LSGetApplicationForInfo(kLSUnknownType, appCreator, NULL, kLSRolesAll, NULL, &outAppURL);
+    itemURLs = CFArrayCreate(NULL, (const void **)itemURL, 1, &kCFTypeArrayCallBacks);
+    CFRelease(itemURL[0]);
+    inLaunchSpec.appURL = (err == noErr) ? outAppURL : NULL;
+    inLaunchSpec.itemURLs = itemURLs;
+    inLaunchSpec.passThruParams = NULL;
+    inLaunchSpec.launchFlags = kLSLaunchDefaults;
+    inLaunchSpec.asyncRefCon = NULL;
+    
+    err = ::LSOpenFromURLSpec(&inLaunchSpec, NULL);
+    
+    if (inLaunchSpec.appURL != NULL)
+        CFRelease(outAppURL);
+    CFRelease(itemURLs);
+    
 	return err;
 }
